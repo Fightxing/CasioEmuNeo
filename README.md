@@ -50,3 +50,10 @@
    ```
    修改 `model.lua`  
    设置`rom_path` 为`"rom.bin"`  
+
+## 近期修复（2026-03）
+- 修复 Linux/Arch 下 `xmake` 链接 Lua 版本不匹配导致的 `lua_newuserdata` 链接失败。
+- 修复 `fx991cnx` 机型在 UI 启动时读取 `ram_length/ram_start` 导致的异常退出，改为按硬件类型自动推导 RAM 显示区间。
+- 修复 `_disas.txt` 解析过程的异常崩溃，增加容错处理，避免 `terminate called without an active exception`。
+- 修复 GUI 相关线程生命周期问题（事件循环/监视线程），改善窗口关闭时稳定性。
+- 默认配置中的机型路径已改为仓库相对路径（`models/fx991cnx`）。

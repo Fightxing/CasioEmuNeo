@@ -19,8 +19,28 @@ UI_SINGLE_IMPL(DebugUi)
 DebugUi::DebugUi()
 {
     instance = this;
-    ram_length = casioemu::Emulator::instance->GetModelInfo("ram_length");
-    ram_start = casioemu::Emulator::instance->GetModelInfo("ram_start");
+    bool real_hardware = casioemu::Emulator::instance->GetModelInfo("real_hardware");
+    switch (casioemu::Emulator::instance->hardware_id) {
+        case casioemu::HW_ES_PLUS:
+            ram_start = 0x8000;
+            ram_length = 0x0E00;
+            break;
+        case casioemu::HW_CLASSWIZ:
+            ram_start = 0xD000;
+            ram_length = 0x2000;
+            break;
+        case casioemu::HW_CLASSWIZ_II:
+            ram_start = 0x9000;
+            ram_length = 0x6000;
+            break;
+        default:
+            ram_start = MEM_EDIT_BASE_ADDR;
+            ram_length = MEM_EDIT_MEM_SIZE;
+            break;
+    }
+    if (!real_hardware) {
+        ram_length += 0x100;
+    }
     window = SDL_CreateWindow(EmuGloConfig[UI_TITLE], SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
     if (renderer == nullptr)
@@ -103,8 +123,11 @@ void DebugUi::PaintSDL(){
 void DebugUi::PaintUi(){
     if(need_paint)
         return;
-    assert(MARKED_SPANS != nullptr /* initialized in casioemu.cpp */);
-    auto &marked_spans = *MARKED_SPANS;
+    MemoryEditor::OptionalMarkedSpans marked_spans;
+    {
+        std::lock_guard<std::mutex> lock(MARKED_SPANS_MUTEX);
+        marked_spans = MARKED_SPANS;
+    }
     static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     ImGuiIO& io = ImGui::GetIO();
     SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
@@ -128,12 +151,12 @@ void DebugUi::PaintUi(){
 
 }
  
-MemoryEditor::OptionalMarkedSpans* DebugUi::MARKED_SPANS = nullptr;
+MemoryEditor::OptionalMarkedSpans DebugUi::MARKED_SPANS = {};
+std::mutex DebugUi::MARKED_SPANS_MUTEX;
 
 void DebugUi::UpdateMarkedSpans(const MemoryEditor::OptionalMarkedSpans &spans) {
-    delete MARKED_SPANS;
-    auto leaked = new std::optional(spans);
-    MARKED_SPANS = leaked;
+    std::lock_guard<std::mutex> lock(MARKED_SPANS_MUTEX);
+    MARKED_SPANS = spans;
 }
 
 void gui_loop(){

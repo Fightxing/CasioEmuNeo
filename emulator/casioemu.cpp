@@ -37,26 +37,14 @@
 #include <csignal>
 
 static bool abort_flag = false;
+static std::atomic<bool> mem_spans_watcher_running(false);
+static std::thread mem_spans_watcher_thread;
 
 void StartMemSpansConfigWatcherThread(const std::string &path);
+void StopMemSpansConfigWatcherThread();
 
 using namespace casioemu;
 
-
-int imgui_rendering(void* data){
-	DebugUi *ui = (DebugUi*)data;
-	SDL_Event event;
-	SDL_zero(event);
-	event.type = SDL_USEREVENT;
-	event.user.code = 6;
-	while (true) {
-		ui->PaintUi();
-#ifndef _WIN32
-		ui->PaintSDL();
-#endif
-		SDL_Delay(16);
-	}
-}
 
 // #define DEBUG
 int main(int argc, char *argv[])
@@ -125,33 +113,22 @@ int main(int argc, char *argv[])
 
 	{
 		Emulator emulator(argv_map);
-	std::thread console_t([&](){
-		char cmd_buf[128];
-		while (true) {
-			memset(cmd_buf, 0, 128);
-			std::cin.getline(cmd_buf,128);
-			emulator.ExecuteCommand(std::string(cmd_buf));
-		}
-	});
 		// Note: argv_map must be destructed after emulator.
 
         // start colored spans file watcher thread
     	auto colored_spans_file = emulator.GetModelFilePath("mem-spans.txt");
+		DebugUi::UpdateMarkedSpans({});
         StartMemSpansConfigWatcherThread(colored_spans_file);
 
-		// Used to signal to the console input thread when to stop.
-		static std::atomic<bool> running(true);
-
 		DebugUi ui;
-		
-		SDL_Thread *uit = SDL_CreateThread(imgui_rendering, "uithread", &ui);
 	
 		while (emulator.Running())
 		{
-			//std::cout<<SDL_GetMouseFocus()<<","<<emulator.window<<std::endl;
-			SDL_Event event;
+			ui.PaintUi();
 			ui.PaintSDL();
-			if (!SDL_PollEvent(&event))
+
+			SDL_Event event;
+			if (!SDL_WaitEventTimeout(&event, 16))
 				continue;
 			
             if (abort_flag) {
@@ -211,10 +188,9 @@ int main(int argc, char *argv[])
 			case SDL_TEXTINPUT:
 			case SDL_MOUSEMOTION:
 			case SDL_MOUSEWHEEL:
+				ImGui_ImplSDL2_ProcessEvent(&event);
 				if(SDL_GetKeyboardFocus()!=emulator.window && SDL_GetMouseFocus()!=emulator.window)
 				{
-					ImGui_ImplSDL2_ProcessEvent(&event);
-					//ui.PaintSDL();
 					break;
 				}
 				emulator.UIEvent(event);
@@ -225,8 +201,8 @@ int main(int argc, char *argv[])
 
 		
 		}
-		
-		running = false;
+
+		StopMemSpansConfigWatcherThread();
 
 		
 		//console_input_thread.join();
@@ -247,7 +223,9 @@ int main(int argc, char *argv[])
 
 #define MEM_SPANS_CONFIG_POLLING_INTERVAL 1 /* seconds */
 void StartMemSpansConfigWatcherThread(const std::string &path) {
-    std::thread([&]() {
+	StopMemSpansConfigWatcherThread();
+	mem_spans_watcher_running.store(true);
+	mem_spans_watcher_thread = std::thread([path]() {
         uint64_t last_mtime{};
         // Currently we just use this naive file modification watcher (periodically polling method).
         // There are platform-dependent methods (like inotify on *nix)
@@ -256,7 +234,7 @@ void StartMemSpansConfigWatcherThread(const std::string &path) {
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
         // loop during the whole program lifetime
-        while (true) {
+		while (mem_spans_watcher_running.load()) {
             if (FileSystem::exists(path)) {
                 auto mtime = FileSystem::mtime_ms(path);
                 if (mtime != last_mtime) {
@@ -270,5 +248,12 @@ void StartMemSpansConfigWatcherThread(const std::string &path) {
             sleep(MEM_SPANS_CONFIG_POLLING_INTERVAL);
         }
 #pragma clang diagnostic pop
-    }).detach();
+	});
+}
+
+void StopMemSpansConfigWatcherThread() {
+	mem_spans_watcher_running.store(false);
+	if (mem_spans_watcher_thread.joinable()) {
+		mem_spans_watcher_thread.join();
+	}
 }
