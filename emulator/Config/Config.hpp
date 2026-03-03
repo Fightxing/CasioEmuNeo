@@ -47,6 +47,20 @@ enum TranslateMap{
     UI_BP_WRITE,
     UI_BP_READ,
     UI_MEM_BP,
+    UI_GUIDE_WINDOW_TITLE,
+    UI_GUIDE_TITLE,
+    UI_GUIDE_LINE1,
+    UI_GUIDE_LINE2,
+    UI_GUIDE_INPUT_LABEL,
+    UI_GUIDE_BTN_BROWSE,
+    UI_GUIDE_BTN_DEFAULT,
+    UI_GUIDE_BTN_CONFIRM,
+    UI_GUIDE_BTN_EXIT,
+    UI_GUIDE_PICK_FAILED,
+    UI_GUIDE_PICK_NOT_AVAILABLE,
+    UI_GUIDE_PICK_CANCELLED,
+    UI_GUIDE_NO_SELECTION_ERROR,
+    UI_GUIDE_PICKER_TITLE,
 };
 
 class EmuConfig{
@@ -77,7 +91,11 @@ public:
 
     std::string GetFontPath();
 
+    std::string GetUsableFontPath();
+
     std::string GetModulePath();
+
+    void SetModulePath(const std::string &path);
 
 };
 

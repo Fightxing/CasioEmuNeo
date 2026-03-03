@@ -32,41 +32,51 @@ CodeViewer::CodeViewer(std::string path)
     instance = this;
     src_path = path;
     emu = casioemu::Emulator::instance;
-    std::thread t1([this](){
-        std::ifstream f(src_path,std::ios::in);
-    if(!f.is_open()){
-        PANIC("\nFail to open disassembly code src: %s\n",src_path.c_str());
+    std::ifstream f(src_path, std::ios::in);
+    if (!f.is_open()) {
+        load_error = "Disassembly file is missing: " + src_path;
+        casioemu::logger::Info("%s\n", load_error.c_str());
+        return;
     }
     casioemu::logger::Info("Start to read code src ...\n");
-    char buf[200]{0};
-    char adr[6]{0};
-    while(!f.eof()){
-        f.getline(buf,200);
-        // 1sf, extract segment number
-        uint8_t seg = buf[1] - '0';
-        uint8_t len = strlen(buf);
-        if(!len)
-            break;
-        if(len>max_col)
-            max_col = len;
-        memcpy(adr, buf+2, 4);
-        //casioemu::logger::Info("[%s %d %d]\n",adr,seg,len);
-        uint16_t offset = std::stoi( adr,0,16);
+
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.empty()) {
+            continue;
+        }
+        if ((int)line.size() > max_col) {
+            max_col = line.size();
+        }
+        if (line.size() < 6 || line[1] < '0' || line[1] > '9') {
+            continue;
+        }
+
+        std::string adr = line.substr(2, 4);
+        uint16_t offset;
+        try {
+            offset = static_cast<uint16_t>(std::stoi(adr, nullptr, 16));
+        } catch (...) {
+            continue;
+        }
+
         CodeElem e;
-        e.offset =offset;
-        e.segment =seg;
-        memset(e.srcbuf, 0, 40);
-        memcpy(e.srcbuf, buf+28, len-28);
+        e.offset = offset;
+        e.segment = static_cast<uint8_t>(line[1] - '0');
+        memset(e.srcbuf, 0, sizeof(e.srcbuf));
+
+        if (line.size() > 28) {
+            auto src = line.substr(28);
+            std::strncpy(e.srcbuf, src.c_str(), sizeof(e.srcbuf) - 1);
+        }
+
         codes.push_back(e);
-        memset(buf, 0, 200);
-        memset(adr, 0, 6);
     }
     f.close();
+
     casioemu::logger::Info("Read src codes over!\n");
     max_row = codes.size();
-    is_loaded=true;
-    });
-    t1.detach();
+    is_loaded = true;
 }
 bool elem_cmp(const CodeElem& a, const CodeElem& b) {
 
@@ -192,7 +202,11 @@ void CodeViewer::DrawWindow(){
         ImGui::SetNextWindowContentSize(ImVec2(w*50,h*10));
         ImGui::Begin(EmuGloConfig[UI_DISAS]);
         ImGui::SetCursorPos(ImVec2(w*2,h*5));
-        ImGui::Text(EmuGloConfig[UI_DISAS_WAITING]);
+        if (load_error.empty()) {
+            ImGui::Text(EmuGloConfig[UI_DISAS_WAITING]);
+        } else {
+            ImGui::TextWrapped("%s", load_error.c_str());
+        }
         ImGui::End();
         return;
     }
@@ -213,8 +227,11 @@ void CodeViewer::DrawWindow(){
     ImGui::SetNextItemWidth(ImGui::CalcTextSize("000000").x);
     ImGui::InputText("##input", adrbuf, 8);
     if(adrbuf[0]!='\0' && ImGui::IsItemFocused()){
-        uint32_t addr = std::stoi(adrbuf,0,16);
-        JumpTo(addr>>16, addr&0x0ffff);
+        try {
+            uint32_t addr = static_cast<uint32_t>(std::stoul(adrbuf, nullptr, 16));
+            JumpTo(addr>>16, addr&0x0ffff);
+        } catch (...) {
+        }
     }
     ImGui::SameLine();
     ImGui::Checkbox(EmuGloConfig[UI_DISAS_STEP], &step_debug);

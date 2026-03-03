@@ -6,7 +6,7 @@ target("CasioEmuX")
 set_kind("binary")
 set_languages("c++17")
 add_files("emulator/*.cpp","emulator/*/*.cpp")
-add_packages("libsdl2","libsdl2_image","lua","python3.10")
+add_packages("lua","libsdl2","libsdl2_image","python3.10")
 set_rundir("./")
 add_packages("imgui", {public = true})
     

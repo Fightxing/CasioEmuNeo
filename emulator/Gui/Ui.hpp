@@ -34,7 +34,8 @@ private:
 public:
     UI_SINGLE_HEAD(DebugUi)
     int ram_start = 0,ram_length = 0;
-    static MemoryEditor::OptionalMarkedSpans *MARKED_SPANS;
+    static MemoryEditor::OptionalMarkedSpans MARKED_SPANS;
+    static std::mutex MARKED_SPANS_MUTEX;
 
     static void UpdateMarkedSpans(const MemoryEditor::OptionalMarkedSpans &spans);
 

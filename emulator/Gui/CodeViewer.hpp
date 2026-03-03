@@ -34,6 +34,7 @@ class CodeViewer :public UiBase
         int max_col = 0;
         int cur_col = 0;
         bool is_loaded = false;
+        std::string load_error;
         bool edit_active = false;
         bool need_roll = false;
         int cur_break_real_pc = -1;
