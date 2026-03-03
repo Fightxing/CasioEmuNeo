@@ -34,7 +34,9 @@ CodeViewer::CodeViewer(std::string path)
     emu = casioemu::Emulator::instance;
     std::ifstream f(src_path, std::ios::in);
     if (!f.is_open()) {
-        PANIC("\nFail to open disassembly code src: %s\n", src_path.c_str());
+        load_error = "Disassembly file is missing: " + src_path;
+        casioemu::logger::Info("%s\n", load_error.c_str());
+        return;
     }
     casioemu::logger::Info("Start to read code src ...\n");
 
@@ -200,7 +202,11 @@ void CodeViewer::DrawWindow(){
         ImGui::SetNextWindowContentSize(ImVec2(w*50,h*10));
         ImGui::Begin(EmuGloConfig[UI_DISAS]);
         ImGui::SetCursorPos(ImVec2(w*2,h*5));
-        ImGui::Text(EmuGloConfig[UI_DISAS_WAITING]);
+        if (load_error.empty()) {
+            ImGui::Text(EmuGloConfig[UI_DISAS_WAITING]);
+        } else {
+            ImGui::TextWrapped("%s", load_error.c_str());
+        }
         ImGui::End();
         return;
     }

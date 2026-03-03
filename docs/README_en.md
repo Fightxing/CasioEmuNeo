@@ -56,3 +56,12 @@ With debuggers.
 	```
 	xmake run CasioEmuX ../models/fx991cnx
 	```
+
+## First-run startup guide (model/ROM)
+- The emulator uses command-line `model` first; if not provided, it falls back to `settings.model` in `config.ini`.
+- If the selected model directory is invalid (missing `model.lua` or missing ROM file defined by `rom_path`), a startup guide window is shown.
+- Guide text now follows system locale (Chinese locale shows Chinese guide text).
+- The guide supports both manual text input and desktop directory picker (`zenity`/`kdialog`) when available.
+- After a valid model directory is confirmed, the path is saved to `config.ini` for next launch.
+- Missing `_disas.txt` no longer crashes startup; only the disassembly panel is unavailable.
+- Font loading supports system fallback: it uses `settings.font` first, then tries common system fonts (e.g. Noto CJK/WenQuanYi) if unavailable.

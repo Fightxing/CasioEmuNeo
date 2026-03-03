@@ -60,7 +60,11 @@ DebugUi::DebugUi()
     
     EmuGloConfig.GetAtlas().AddRanges(io.Fonts->GetGlyphRangesChineseFull());
     EmuGloConfig.GetAtlas().BuildRanges(&ranges);
-    io.Fonts->AddFontFromFileTTF(EmuGloConfig.GetFontPath().data(), 16.0f, nullptr, ranges.Data);
+    auto font_path = EmuGloConfig.GetUsableFontPath();
+    if (io.Fonts->AddFontFromFileTTF(font_path.c_str(), 16.0f, nullptr, ranges.Data) == nullptr) {
+        io.Fonts->AddFontDefault();
+        SDL_Log("Failed to load font '%s', fallback to default ImGui font.", font_path.c_str());
+    }
     io.Fonts->Build();
     
     ImGui::StyleColorsDark();

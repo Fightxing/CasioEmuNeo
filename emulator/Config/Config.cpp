@@ -2,6 +2,12 @@
 #include <fstream>
 #include <imgui.h>
 #include <string>
+#include <vector>
+
+static bool FileReadable(const std::string &path) {
+    std::ifstream fin(path);
+    return fin.good();
+}
 
 void EmuConfig::initTranslate(){
     translate[UI_TITLE]="CasioEmuNeo";
@@ -41,6 +47,20 @@ void EmuConfig::initTranslate(){
     translate[UI_BP_WRITE] = "Write";
     translate[UI_BP_READ] = "Read";
     translate[UI_MEM_BP] = "Memory Breakpoint";
+    translate[UI_GUIDE_WINDOW_TITLE] = "CasioEmuNeo - First Run Setup";
+    translate[UI_GUIDE_TITLE] = "Startup Guide";
+    translate[UI_GUIDE_LINE1] = "No valid model/ROM configuration was found.";
+    translate[UI_GUIDE_LINE2] = "Please enter a model directory path (it must include model.lua and ROM file). Example: models/fx991cnx";
+    translate[UI_GUIDE_INPUT_LABEL] = "Model directory";
+    translate[UI_GUIDE_BTN_BROWSE] = "Browse...";
+    translate[UI_GUIDE_BTN_DEFAULT] = "Use default";
+    translate[UI_GUIDE_BTN_CONFIRM] = "Confirm and continue";
+    translate[UI_GUIDE_BTN_EXIT] = "Exit";
+    translate[UI_GUIDE_PICK_FAILED] = "Failed to open desktop directory picker: ";
+    translate[UI_GUIDE_PICK_NOT_AVAILABLE] = "No supported desktop directory picker found (zenity/kdialog).";
+    translate[UI_GUIDE_PICK_CANCELLED] = "No directory selected.";
+    translate[UI_GUIDE_NO_SELECTION_ERROR] = "No valid model selected.";
+    translate[UI_GUIDE_PICKER_TITLE] = "Select model directory";
 }
 
 void EmuConfig::update(){
@@ -93,6 +113,29 @@ std::string EmuConfig::GetFontPath(){
     return "unifont.otf";
 }
 
+std::string EmuConfig::GetUsableFontPath(){
+    std::string configured = GetFontPath();
+    if(FileReadable(configured))
+        return configured;
+
+    std::vector<std::string> font_candidates = {
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
+        "/usr/share/fonts/truetype/noto/NotoSansCJKsc-Regular.otf",
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/wenquanyi/wqy-zenhei/wqy-zenhei.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    };
+
+    for(const auto &candidate : font_candidates){
+        if(FileReadable(candidate))
+            return candidate;
+    }
+
+    return configured;
+}
+
 std::string EmuConfig::GetModulePath(){
     if(root.has("settings")){
         if(root["settings"].has("model")){
@@ -100,6 +143,11 @@ std::string EmuConfig::GetModulePath(){
         }
     }
     return "991cnx";
+}
+
+void EmuConfig::SetModulePath(const std::string &path){
+    root["settings"]["model"] = path;
+    update();
 }
 
 float EmuConfig::GetScale(){

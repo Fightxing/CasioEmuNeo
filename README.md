@@ -57,3 +57,12 @@
 - 修复 `_disas.txt` 解析过程的异常崩溃，增加容错处理，避免 `terminate called without an active exception`。
 - 修复 GUI 相关线程生命周期问题（事件循环/监视线程），改善窗口关闭时稳定性。
 - 默认配置中的机型路径已改为仓库相对路径（`models/fx991cnx`）。
+
+## 首次启动引导（ROM/机型目录）
+- 程序启动时会优先使用命令行传入的 `model` 参数；若未传入则读取 `config.ini` 的 `settings.model`。
+- 当 `model.lua` 或 `rom_path` 对应 ROM 文件无效时，会弹出启动引导窗口，提示输入机型目录（例如 `models/fx991cnx`）。
+- 引导文案会根据系统语言环境自动切换（中文环境优先显示中文）。
+- 引导支持两种目录选择方式：手动文本输入，或通过桌面目录选择器（`zenity`/`kdialog`）浏览选择。
+- 引导校验通过后会自动写回 `config.ini`，后续启动将直接使用上次有效目录。
+- `_disas.txt` 缺失不再导致程序直接退出，仅反汇编视图不可用。
+- 字体加载支持系统字体回退：优先使用 `config.ini` 的 `settings.font`，若不可用则自动尝试常见系统字体（如 Noto CJK/WenQuanYi）。
